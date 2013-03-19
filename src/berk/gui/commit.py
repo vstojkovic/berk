@@ -90,7 +90,7 @@ class StagedChangesModel(QAbstractTableModel):
 class LocalChangesModel(FileModel):
     def _refresh_files(self):
         super(LocalChangesModel, self)._refresh_files()
-        self.included_files = set(self.files)
+        self.included_files = set(self.files) if self.files else ()
 
     def flags(self, index):
         result = super(LocalChangesModel, self).flags(index)
