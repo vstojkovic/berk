@@ -1,0 +1,21 @@
+<RCC>
+  <qresource prefix="app/images">
+    <file>graph.png</file>
+    <file>power.png</file>
+    <file>less.png</file>
+    <file>more.png</file>
+    <file>stage.png</file>
+    <file>unstage.png</file>
+    <file>commit.png</file>
+  </qresource>
+  <qresource prefix="app/images/overlays/16">
+    <file alias="unmodified.png">overlay-16-unmodified.png</file>
+    <file alias="untracked.png">overlay-16-untracked.png</file>
+    <file alias="added.png">overlay-16-added.png</file>
+    <file alias="modified.png">overlay-16-modified.png</file>
+    <file alias="renamed-or-copied.png">overlay-16-renamed-or-copied.png</file>
+    <file alias="deleted.png">overlay-16-deleted.png</file>
+    <file alias="missing.png">overlay-16-missing.png</file>
+    <file alias="ignored.png">overlay-16-ignored.png</file>
+  </qresource>
+</RCC>

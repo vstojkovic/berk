@@ -1,0 +1,9 @@
+# Compiled files
+*.py[cod]
+
+# Packages
+/dist
+/build
+
+# IDEs
+/.idea

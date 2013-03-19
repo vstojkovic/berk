@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>WorkspaceWindow</class>
+ <widget class="QMainWindow" name="WorkspaceWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>RichGit</string>
+  </property>
+  <property name="dockNestingEnabled">
+   <bool>true</bool>
+  </property>
+  <property name="dockOptions">
+   <set>QMainWindow::AllowNestedDocks|QMainWindow::AllowTabbedDocks|QMainWindow::AnimatedDocks|QMainWindow::ForceTabbedDocks</set>
+  </property>
+  <widget class="QWidget" name="centralwidget"/>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>800</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>Project</string>
+    </property>
+    <addaction name="action_new_repository"/>
+    <addaction name="action_open_repository"/>
+    <addaction name="action_clone_repository"/>
+    <addaction name="separator"/>
+    <addaction name="action_exit"/>
+   </widget>
+   <widget class="QMenu" name="menuView">
+    <property name="title">
+     <string>&amp;View</string>
+    </property>
+    <addaction name="action_view_directories"/>
+    <addaction name="action_view_files"/>
+   </widget>
+   <widget class="QMenu" name="menuBranch">
+    <property name="title">
+     <string>Branch</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menuRemote">
+    <property name="title">
+     <string>Remote</string>
+    </property>
+   </widget>
+   <widget class="QMenu" name="menuHistory">
+    <property name="title">
+     <string>Changes</string>
+    </property>
+    <addaction name="action_stage"/>
+    <addaction name="action_unstage"/>
+    <addaction name="action_revert"/>
+    <addaction name="action_remove"/>
+    <addaction name="separator"/>
+    <addaction name="action_commit"/>
+    <addaction name="action_log"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuView"/>
+   <addaction name="menuHistory"/>
+   <addaction name="menuBranch"/>
+   <addaction name="menuRemote"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QToolBar" name="toolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <property name="iconSize">
+    <size>
+     <width>32</width>
+     <height>32</height>
+    </size>
+   </property>
+   <property name="toolButtonStyle">
+    <enum>Qt::ToolButtonTextUnderIcon</enum>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="action_exit"/>
+   <addaction name="separator"/>
+   <addaction name="action_stage"/>
+   <addaction name="action_unstage"/>
+   <addaction name="action_commit"/>
+   <addaction name="separator"/>
+   <addaction name="action_log"/>
+  </widget>
+  <action name="action_exit">
+   <property name="icon">
+    <iconset resource="../images/images.qrc">
+     <normaloff>:/app/images/power.png</normaloff>:/app/images/power.png</iconset>
+   </property>
+   <property name="text">
+    <string>E&amp;xit</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Q</string>
+   </property>
+   <property name="shortcutContext">
+    <enum>Qt::ApplicationShortcut</enum>
+   </property>
+  </action>
+  <action name="action_open_repository">
+   <property name="text">
+    <string>&amp;Open Repository...</string>
+   </property>
+   <property name="toolTip">
+    <string>Open a repository</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
+  </action>
+  <action name="action_view_directories">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Directories</string>
+   </property>
+   <property name="toolTip">
+    <string>Show/hide the directory tree</string>
+   </property>
+  </action>
+  <action name="action_view_files">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Files</string>
+   </property>
+   <property name="toolTip">
+    <string>Show/hide the file list</string>
+   </property>
+  </action>
+  <action name="action_stage">
+   <property name="icon">
+    <iconset resource="../images/images.qrc">
+     <normaloff>:/app/images/stage.png</normaloff>:/app/images/stage.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Stage</string>
+   </property>
+   <property name="toolTip">
+    <string>Stage the selected changes</string>
+   </property>
+  </action>
+  <action name="action_unstage">
+   <property name="icon">
+    <iconset resource="../images/images.qrc">
+     <normaloff>:/app/images/unstage.png</normaloff>:/app/images/unstage.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Unstage</string>
+   </property>
+   <property name="toolTip">
+    <string>Unstage the selected changes</string>
+   </property>
+  </action>
+  <action name="action_revert">
+   <property name="text">
+    <string>Re&amp;vert</string>
+   </property>
+   <property name="toolTip">
+    <string>Revert the selected changes from the index</string>
+   </property>
+  </action>
+  <action name="action_commit">
+   <property name="icon">
+    <iconset resource="../images/images.qrc">
+     <normaloff>:/app/images/commit.png</normaloff>:/app/images/commit.png</iconset>
+   </property>
+   <property name="text">
+    <string>&amp;Commit...</string>
+   </property>
+   <property name="toolTip">
+    <string>Commit the staged changes</string>
+   </property>
+  </action>
+  <action name="action_remove">
+   <property name="text">
+    <string>Remove...</string>
+   </property>
+   <property name="toolTip">
+    <string>Remove the selected files from the work tree and/or the index</string>
+   </property>
+  </action>
+  <action name="action_log">
+   <property name="icon">
+    <iconset resource="../images/images.qrc">
+     <normaloff>:/app/images/graph.png</normaloff>:/app/images/graph.png</iconset>
+   </property>
+   <property name="text">
+    <string>Show &amp;Log</string>
+   </property>
+   <property name="toolTip">
+    <string>Display the history log</string>
+   </property>
+  </action>
+  <action name="action_new_repository">
+   <property name="text">
+    <string>&amp;New Repository...</string>
+   </property>
+   <property name="toolTip">
+    <string>Create a new repository</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+N</string>
+   </property>
+  </action>
+  <action name="action_clone_repository">
+   <property name="text">
+    <string>&amp;Clone Repository...</string>
+   </property>
+   <property name="toolTip">
+    <string>Clone a remote repository</string>
+   </property>
+  </action>
+ </widget>
+ <resources>
+  <include location="../images/images.qrc"/>
+ </resources>
+ <connections>
+  <connection>
+   <sender>action_exit</sender>
+   <signal>triggered()</signal>
+   <receiver>WorkspaceWindow</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>399</x>
+     <y>299</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>

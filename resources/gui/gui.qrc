@@ -1,0 +1,12 @@
+<RCC>
+  <qresource prefix="app/gui">
+    <file>WorkspaceWindow.ui</file>
+    <file>DirectoryView.ui</file>
+    <file>FileView.ui</file>
+    <file>OpenRepositoryDialog.ui</file>
+    <file>CreateRepositoryDialog.ui</file>
+    <file>CommitDialog.ui</file>
+    <file>LogView.ui</file>
+    <file>SelectCommitDialog.ui</file>
+  </qresource>
+</RCC>
