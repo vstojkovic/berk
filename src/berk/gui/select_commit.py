@@ -1,5 +1,6 @@
 from berk.gui import busy_cursor, FilterModel, model_item, setup_ui
-from berk.gui.history import create_log_graph, LogGraphDelegate, LogGraphModel
+from berk.gui.history import commit_matches_text, create_log_graph, \
+    LogGraphDelegate, LogGraphModel
 
 from PySide.QtGui import QDialog, QDialogButtonBox
 
@@ -46,11 +47,7 @@ class SelectCommitDialog(QDialog):
             self.graph_table.showColumn(0)
 
     def filter_graph_row(self, graph_row):
-        text = self.filter_text.text()
-        return any(
-            (text in str(attr) if not isinstance(attr, tuple)
-                else any(text in str(item) for item in attr))
-            for attr in graph_row.log_entry)
+        return commit_matches_text(graph_row.log_entry, self.filter_text.text())
 
     def commit_clicked(self, index, old_index):
         self.dialog_buttons.button(QDialogButtonBox.Ok).setEnabled(bool(

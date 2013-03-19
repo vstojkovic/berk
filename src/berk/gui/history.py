@@ -4,8 +4,8 @@ import posixpath
 
 import git_api
 
-from berk.gui import busy_cursor, connect_destructor, model_item, rgb_color, \
-    View
+from berk.gui import busy_cursor, connect_destructor, FilterModel, model_item, \
+    rgb_color, View
 
 from PySide.QtCore import QAbstractTableModel, QPointF, QSize, Qt
 from PySide.QtGui import QApplication, QBrush, QFontMetrics, QPainter, \
@@ -29,8 +29,32 @@ class LogView(View):
                 lambda: create_log_graph(self.repo,
                     self.repo.log(paths=self.paths, revs=self.revs,
                     all=self.all)))
-        self.graph_table.setModel(self.graph_model)
-        self.graph_table.setItemDelegate(LogGraphDelegate())
+        self.filter_model = FilterModel()
+        self.filter_model.setSourceModel(self.graph_model)
+        self.default_delegate = self.graph_table.itemDelegate()
+        self.graph_delegate = LogGraphDelegate()
+        self.graph_table.setModel(self.filter_model)
+        self.graph_table.setItemDelegate(self.graph_delegate)
+        self.filter_text.textEdited.connect(self.filter_text_edited)
+
+    def filter_text_edited(self, text):
+        if text:
+            self.graph_table.hideColumn(0)
+            self.filter_model.filters += self.filter_graph_row
+        else:
+            self.filter_model.filters -= self.filter_graph_row
+            self.graph_table.showColumn(0)
+
+    def filter_graph_row(self, graph_row):
+        return commit_matches_text(graph_row.log_entry, self.filter_text.text())
+
+
+def commit_matches_text(commit, text):
+    return any(
+        (text in str(attr)
+            if not isinstance(attr, tuple)
+            else any(text in str(item) for item in attr))
+        for attr in commit)
 
 
 # Needs to be a class instead of namedtuple, because PySide converts tuples
