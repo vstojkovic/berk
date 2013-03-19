@@ -6,7 +6,7 @@ from berk.gui.workspace.directory_view import DirectoryView
 from berk.gui.workspace.file_view import FileView
 from berk.gui.workspace.open_repository import OpenRepositoryDialog
 from berk.gui.workspace.create_repository import CreateRepositoryDialog
-from berk.gui.history import LogView
+from berk.gui.history.log_view import LogView
 from berk.gui.commit import CommitDialog
 
 from PySide.QtCore import Signal, Qt

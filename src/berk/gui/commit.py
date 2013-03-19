@@ -1,15 +1,15 @@
 import posixpath
 
+from PySide.QtCore import QAbstractTableModel, Qt
+from PySide.QtGui import QDialog, QDialogButtonBox, QFont, QMenu
+
 from berk.model import Repo, WorkspaceDirectory
 from berk.gui import busy_cursor, connect_destructor, FileIconProvider, \
     model_item, setup_ui
 from berk.gui.workspace import apply_status_to_icon, deep_file_list, \
     exclude_ignored, exclude_unmodified
 from berk.gui.workspace.file_view import FileModel
-from berk.gui.select_commit import SelectCommitDialog
-
-from PySide.QtCore import QAbstractTableModel, Qt
-from PySide.QtGui import QDialog, QDialogButtonBox, QFont, QMenu
+from berk.gui.history.select_commit import SelectCommitDialog
 
 class StagedChangesModel(QAbstractTableModel):
     column_getters = [
