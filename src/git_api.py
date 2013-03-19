@@ -386,11 +386,12 @@ class Git(object):
         return cmd.check().output.splitlines()
 
     def head(self, work_tree_dir, git_dir=None):
-        cmd = self.exe.rev_parse('HEAD', symbolic_full_name=True, 
+        cmd = self.exe.rev_parse('HEAD', '--symbolic-full-name', 'HEAD',
             **self._repo_opts(work_tree_dir, git_dir))
-        result = cmd.check().output.rstrip()
-        if result.startswith('refs/'):
-            return result
+        commit_id, ref = cmd.check().output.splitlines()
+        if not ref.startswith('refs/'):
+            ref = None
+        return commit_id, ref
 
     def status(self, work_tree_dir, git_dir=None, paths=()):
         cmd = self.exe.status('-z', '--ignored', '--', paths,

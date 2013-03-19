@@ -15,7 +15,7 @@ from PySide.QtGui import QDialog, QFileDialog
 
 def has_log(item):
     if not item: return False
-    if not item.repo.head_ref: return False
+    if not item.repo.head_id: return False
     if isinstance(item, WorkspaceDirectory):
         return True
     return item.index_status not in (git_api.IGNORED, git_api.UNTRACKED)

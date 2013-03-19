@@ -186,8 +186,10 @@ class Repo(WorkspaceDirectory):
         self.branches = [ref[len('refs/heads/'):] for ref in
             self.git.refs(self.work_tree_dir, self.git_dir, branches=True)]
         try:
-            self.head_ref = self.git.head(self.work_tree_dir, self.git_dir)
+            self.head_id, self.head_ref = self.git.head(self.work_tree_dir,
+                self.git_dir)
         except git_api.GitCommandError:
+            self.head_id = None
             self.head_ref = None
         if self.head_ref: self.head_ref = self.head_ref[len('refs/heads/'):]
         self.workspace.repo_refreshed(self)
