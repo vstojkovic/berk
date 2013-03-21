@@ -10,7 +10,7 @@ from berk.gui.history.log_view import LogView
 from berk.gui.commit import CommitDialog
 
 from PySide.QtCore import Signal, Qt
-from PySide.QtGui import QDialog, QFileDialog
+from PySide.QtGui import QFileDialog
 
 
 def has_log(item):
@@ -119,7 +119,7 @@ class WorkspaceWindow(Window):
         else:
             kwargs['work_tree_dir'] = dir_path
         dialog = OpenRepositoryDialog(**kwargs)
-        if dialog.exec_() == QDialog.Accepted:
+        if dialog.exec_() == dialog.Accepted:
             with busy_cursor():
                 repo = Repo(work_tree_dir=dialog.work_tree_dir,
                     git_dir=dialog.git_dir)
@@ -132,7 +132,7 @@ class WorkspaceWindow(Window):
             return
         dialog = CreateRepositoryDialog(git=self.app.workspace.git,
             repo_dir=dir_path, parent=self)
-        if dialog.exec_() == QDialog.Accepted:
+        if dialog.exec_() == dialog.Accepted:
             with busy_cursor():
                 self.app.workspace.git.init(dialog.repo_dir, bare=dialog.bare,
                     shared=dialog.shared, template_dir=dialog.template_dir,
@@ -193,7 +193,7 @@ class WorkspaceWindow(Window):
         repo = self.selection_repo
         dialog = CommitDialog(repo=repo, selected_items=self.selected_items,
             parent=self)
-        if dialog.exec_() == QDialog.Rejected: return
+        if dialog.exec_() == dialog.Rejected: return
         with busy_cursor():
             if dialog.use_staged_changes:
                 files = ()

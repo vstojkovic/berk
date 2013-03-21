@@ -6,9 +6,9 @@ import sys
 from berk import Event
 
 from PySide.QtUiTools import QUiLoader
-from PySide.QtGui import QApplication, QBrush, QColor, QCursor, QDockWidget, \
-    QLineEdit, QMainWindow, QPainter, QPalette, QSortFilterProxyModel, QStyle, \
-    QStyleOption, QWidget
+from PySide.QtGui import QApplication, QBrush, QColor, QCursor, QDialog, \
+    QDockWidget, QLineEdit, QMainWindow, QPainter, QPalette, \
+    QSortFilterProxyModel, QStyle, QStyleOption, QWidget
 from PySide.QtCore import QEvent, QObject, QRect, Qt, Signal
 
 
@@ -244,6 +244,16 @@ class FilterModel(QSortFilterProxyModel):
     def filterAcceptsRow(self, source_row, source_parent):
         return self.filters(self.row_item_getter(self.sourceModel(), source_row,
             source_parent))
+
+
+
+
+class Dialog(QDialog):
+    def __init__(self, parent=None):
+        super(Dialog, self).__init__(parent=parent)
+        setup_ui(self)
+        if parent is not None:
+            self.move(parent.window().geometry().center() - self.rect().center())
 
 
 

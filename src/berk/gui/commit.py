@@ -1,25 +1,22 @@
 import posixpath
 
 from PySide.QtCore import QAbstractTableModel, Qt
-from PySide.QtGui import QDialog, QDialogButtonBox, QFont, QMenu
+from PySide.QtGui import QDialogButtonBox, QFont, QMenu
 
 from berk.model import Repo, WorkspaceDirectory
-from berk.gui import busy_cursor, connect_destructor, FileIconProvider, \
-    model_item, setup_ui
+from berk.gui import busy_cursor, connect_destructor, Dialog, FileIconProvider, \
+    model_item
 from berk.gui.workspace import apply_status_to_icon, deep_file_list, \
     exclude_ignored, exclude_unmodified
 from berk.gui.workspace.file_view import FileModel
 from berk.gui.history.select_commit import SelectCommitDialog
 
 
-class CommitDialog(QDialog):
+class CommitDialog(Dialog):
     def __init__(self, repo, selected_items, parent=None):
         super(CommitDialog, self).__init__(parent=parent)
         self.repo = repo
-        setup_ui(self)
         self.dialog_buttons.button(QDialogButtonBox.Ok).setEnabled(False)
-        if parent is not None:
-            self.move(parent.geometry().center() - self.rect().center())
         self.selected_items = selected_items
         if len(selected_items) == 1 and isinstance(selected_items[0],
                 WorkspaceDirectory):
@@ -112,7 +109,7 @@ class CommitDialog(QDialog):
 
     def select_old_message(self):
         dialog = SelectCommitDialog(self.repo, parent=self)
-        if dialog.exec_() == QDialog.Accepted:
+        if dialog.exec_() == dialog.Accepted:
             self.message_text.setPlainText('\n'.join(
                 dialog.selected_commit.message))
 

@@ -1,14 +1,11 @@
-from berk.gui import setup_ui
+from berk.gui import Dialog
 
-from PySide.QtGui import QDialog, QFileDialog, QIcon
+from PySide.QtGui import QFileDialog, QIcon
 
-class CreateRepositoryDialog(QDialog):
+class CreateRepositoryDialog(Dialog):
     def __init__(self, git, repo_dir=None, parent=None):
         super(CreateRepositoryDialog, self).__init__(parent=parent)
         self.git = git
-        setup_ui(self)
-        if parent is not None:
-            self.move(parent.geometry().center() - self.rect().center())
         self.repo_dir = repo_dir
         self.browse_repo_dir_button.clicked.connect(self.browse_repo_dir)
         self.browse_template_dir_button.clicked.connect(self.browse_template_dir)

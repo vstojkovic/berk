@@ -1,16 +1,13 @@
-from berk.gui import connect_destructor, FilterModel, model_item, setup_ui
+from berk.gui import connect_destructor, Dialog, FilterModel, model_item
 
 from PySide.QtCore import QAbstractTableModel, Qt
-from PySide.QtGui import QDialog, QDialogButtonBox
+from PySide.QtGui import QDialogButtonBox
 
 
-class PickBranchesDialog(QDialog):
+class PickBranchesDialog(Dialog):
     def __init__(self, repo, parent=None):
         super(PickBranchesDialog, self).__init__(parent=parent)
         self.repo = repo
-        setup_ui(self)
-        if parent is not None:
-            self.move(parent.window().geometry().center() - self.rect().center())
         self.branch_model = BranchModel(repo, checkable=True, parent=self)
         self.filter_model = FilterModel(parent=self)
         self.filter_model.setSourceModel(self.branch_model)

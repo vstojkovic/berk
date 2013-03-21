@@ -1,18 +1,15 @@
-from berk.gui import busy_cursor, model_item, setup_ui
+from berk.gui import busy_cursor, Dialog, model_item
 from berk.gui.history import LogGraphDelegate, LogGraphModel
 
-from PySide.QtGui import QDialog, QDialogButtonBox
+from PySide.QtGui import QDialogButtonBox
 
-class SelectCommitDialog(QDialog):
+class SelectCommitDialog(Dialog):
     def __init__(self, repo, files=(), revs=(), all=True, parent=None):
         super(SelectCommitDialog, self).__init__(parent=parent)
         self.repo = repo
         self.files = files
         self.revs = revs
         self.all = all
-        setup_ui(self)
-        if parent is not None:
-            self.move(parent.geometry().center() - self.rect().center())
         with busy_cursor():
             self.graph_model = LogGraphModel(self.repo,
                 paths=[f.path for f in self.files], revs=self.revs,
