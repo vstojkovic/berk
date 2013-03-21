@@ -6,7 +6,9 @@
     <file>OpenRepositoryDialog.ui</file>
     <file>CreateRepositoryDialog.ui</file>
     <file>CommitDialog.ui</file>
+    <file>LogFilter.ui</file>
     <file>LogView.ui</file>
     <file>SelectCommitDialog.ui</file>
+    <file>PickBranchesDialog.ui</file>
   </qresource>
 </RCC>

@@ -4,11 +4,14 @@ import posixpath
 
 import git_api
 
-from berk.gui import connect_destructor, model_item, rgb_color
+from berk.gui import busy_cursor, connect_destructor, FilterModel, \
+    loadable_widget, model_item, rgb_color, setup_ui
+from berk.gui.branches import PickBranchesDialog
 
 from PySide.QtCore import QAbstractTableModel, QPointF, QSize, Qt
-from PySide.QtGui import QApplication, QBrush, QFontMetrics, QPainter, \
-    QPainterPath, QPen, QStyle, QStyledItemDelegate, QStyleOptionFocusRect
+from PySide.QtGui import QAction, QActionGroup, QApplication, QBrush, \
+    QFontMetrics, QFrame, QMenu, QPainter, QPainterPath, QPen, QStyle, \
+    QStyledItemDelegate, QStyleOptionFocusRect
 
 
 def commit_matches_text(commit, text):
@@ -45,13 +48,15 @@ class LogGraphModel(QAbstractTableModel):
         lambda row: row.log_entry.commit_id
     ]
 
-    def __init__(self, repo, graph_source, parent=None):
+    def __init__(self, repo, revs=None, paths=None, all=False, parent=None):
         super(LogGraphModel, self).__init__(parent=parent)
         connect_destructor(self)
         self.column_names = [self.tr('Graph'), self.tr('Message'),
             self.tr('Author'), self.tr('Date'), self.tr('SHA')]
         self.repo = repo
-        self.graph_source = graph_source
+        self.revs = revs
+        self.paths = paths
+        self.all = all
         self.graph = None
         self.repo.workspace.before_repo_refreshed += self.before_repo_refreshed
         self.repo.workspace.repo_refreshed += self.repo_refreshed
@@ -66,8 +71,12 @@ class LogGraphModel(QAbstractTableModel):
 
     def refresh(self):
         self.beginResetModel()
-        self.graph = self.graph_source()
+        self._refresh_graph()
         self.endResetModel()
+
+    def _refresh_graph(self):
+        self.graph = create_log_graph(self.repo, self.repo.log(revs=self.revs,
+            paths=self.paths, all=self.all))
 
     def before_repo_refreshed(self, repo):
         if repo is self.repo:
@@ -75,7 +84,7 @@ class LogGraphModel(QAbstractTableModel):
 
     def repo_refreshed(self, repo):
         if repo is self.repo:
-            self.graph = self.graph_source()
+            self._refresh_graph()
             self.endResetModel()
 
     def rowCount(self, parent):
@@ -106,6 +115,85 @@ class LogGraphModel(QAbstractTableModel):
         if orientation == Qt.Vertical:
             return None
         return self.column_names[section]
+
+
+def create_log_graph(repo, git_log):
+    graph = []
+    lanes = []
+    commit_lane_map = {}
+    color_pool = ColorPool()
+    prev_row = None
+    for log_entry in git_log:
+        # locate the lane for the current commit
+        if log_entry.commit_id in commit_lane_map:
+            commit_lane = commit_lane_map.pop(log_entry.commit_id)
+            commit_color = lanes.pop(commit_lane).color
+        else: # if not found, it goes into a new lane
+            commit_lane = len(lanes)
+            commit_color = color_pool.acquire()
+            # calculate by how much we need to shift lanes
+        # for every parent not mapped, map it to a lane and shift lanes
+        lane_shift = -1
+        for parent_id in log_entry.parent_ids:
+            if not parent_id in commit_lane_map:
+                lane_shift += 1
+                parent_lane = commit_lane + lane_shift
+                if lane_shift:
+                    parent_color = color_pool.acquire()
+                else:
+                    parent_color = commit_color
+                lanes.insert(parent_lane, LaneData(parent_id, parent_color))
+                commit_lane_map[parent_id] = parent_lane
+                # release commit color if it wasn't used
+        if lane_shift < 0:
+            color_pool.release(commit_color)
+            # update commit lane map to reflect lane shift
+        if lane_shift:
+            for lane in xrange(commit_lane + lane_shift + 1, len(lanes)):
+                commit_lane_map[lanes[lane].commit_id] = lane
+                # create the list of edges
+        edges = []
+        # add parent edges for the current commit
+        for parent_id in log_entry.parent_ids:
+            parent_lane = commit_lane_map[parent_id]
+            edges.append(GraphEdge(
+                commit_lane, parent_lane, lanes[parent_lane].color))
+            # add straight edges for lanes before the current commit
+        for lane in xrange(0, commit_lane):
+            edges.append(GraphEdge(lane, lane, lanes[lane].color))
+            # add possible angled edges for lanes after the current commit
+        for lane in xrange(commit_lane + lane_shift + 1, len(lanes)):
+            edges.append(GraphEdge(lane - lane_shift, lane, lanes[lane].color))
+            # create the row in the commit list
+        prev_row = GraphRow(
+            repo=repo,
+            log_entry=log_entry,
+            prev_row=prev_row,
+            commit_node=GraphNode(lane=commit_lane, color=commit_color),
+            edges=edges)
+        graph.append(prev_row)
+    return graph
+
+
+class ColorPool(object):
+    def __init__(self):
+        self.highest = -1
+        self.unused = []
+
+    def acquire(self):
+        if self.unused:
+            return -self.unused.pop()
+        else:
+            self.highest += 1
+            return self.highest
+
+    def release(self, color):
+        if color == self.highest:
+            self.highest -= 1
+            if self.unused and (self.unused[0] == -self.highest):
+                del self.unused[0]
+        else:
+            bisect.insort(self.unused, -color)
 
 
 class LogGraphDelegate(QStyledItemDelegate):
@@ -148,24 +236,23 @@ class LogGraphDelegate(QStyledItemDelegate):
         self.draw_focus = draw_focus
         self.preferred_lane_size = preferred_lane_size
 
-    @classmethod
-    def refs_size(cls, option, refs):
+    def refs_size(self, option, refs, skip_head):
         if not refs:
             return 0, 0
         metrics = QFontMetrics(option.font)
         width = 0
         height = 0
         for ref in refs:
-            if posixpath.basename(ref) == 'HEAD':
+            if skip_head and posixpath.basename(ref) == 'HEAD':
                 continue
             ref_text = git_api.parse_ref(ref)[0]
             text_rect = metrics.boundingRect(0, 0, 0, 0,
                 Qt.AlignLeft | Qt.AlignTop, ref_text)
-            text_rect.setWidth(text_rect.width() + cls.ref_padding_x)
-            text_rect.setHeight(text_rect.height() + cls.ref_padding_y)
+            text_rect.setWidth(text_rect.width() + self.ref_padding_x)
+            text_rect.setHeight(text_rect.height() + self.ref_padding_y)
             width += text_rect.width()
-            width += text_rect.height() * cls.ref_arrow_ratio
-            width += cls.ref_spacing
+            width += text_rect.height() * self.ref_arrow_ratio
+            width += self.ref_spacing
             height = max(height, text_rect.height())
         return width, height
 
@@ -180,17 +267,17 @@ class LogGraphDelegate(QStyledItemDelegate):
         width = (max_lane + 1) * self.preferred_lane_size
         height = self.preferred_lane_size
 
-        refs_width, refs_height = self.refs_size(option, row.log_entry.refs)
+        refs_width, refs_height = self.refs_size(option, row.log_entry.refs,
+            bool(row.repo.head_ref))
         width += refs_width
         height = max(height, refs_height)
 
         return QSize(width, height)
 
-    @classmethod
-    def draw_edge(cls, painter, option, edge, lane_offset):
+    def draw_edge(self, painter, option, edge, lane_offset):
         from_y = 0.5 + lane_offset
         to_y = 1 + from_y
-        pen = QPen(cls.edge_color(edge.color), cls.edge_thickness,
+        pen = QPen(self.edge_color(edge.color), self.edge_thickness,
             Qt.SolidLine, Qt.FlatCap, Qt.RoundJoin)
         painter.setPen(pen)
         if edge.from_lane == edge.to_lane:
@@ -204,29 +291,28 @@ class LogGraphDelegate(QStyledItemDelegate):
             path.cubicTo(from_x, from_y + 0.5, to_x, to_y - 0.5, to_x, to_y)
             painter.drawPath(path)
 
-    @classmethod
-    def draw_ref(cls, painter, option, ref, repo, x):
-        if posixpath.basename(ref) == 'HEAD':
+    def draw_ref(self, painter, option, ref, repo, x):
+        if repo.head_ref and posixpath.basename(ref) == 'HEAD':
             return x
 
         ref_text, ref_type = git_api.parse_ref(ref)
         if ref_type == git_api.REF_BRANCH:
-            ref_color = cls.ref_palette[ref_type, ref_text == repo.head_ref]
+            ref_color = self.ref_palette[ref_type, ref_text == repo.head_ref]
         else:
-            ref_color = cls.ref_palette.get(ref_type, cls.ref_color_default)
+            ref_color = self.ref_palette.get(ref_type, self.ref_color_default)
 
         lane_size = option.rect.height()
-        painter.setPen(QPen(Qt.black, cls.ref_frame_thickness))
+        painter.setPen(QPen(Qt.black, self.ref_frame_thickness))
         painter.setBrush(QBrush(ref_color))
         painter.setFont(option.font)
 
         text_rect = painter.boundingRect(0, 0, 0, 0,
             Qt.AlignLeft | Qt.AlignTop, ref_text)
         text_rect.translate(-text_rect.x(), -text_rect.y())
-        text_rect.setWidth(text_rect.width() + cls.ref_padding_x)
-        text_rect.setHeight(text_rect.height() + cls.ref_padding_y)
+        text_rect.setWidth(text_rect.width() + self.ref_padding_x)
+        text_rect.setHeight(text_rect.height() + self.ref_padding_y)
         text_rect.translate(
-            x + text_rect.height() * cls.ref_arrow_ratio,
+            x + text_rect.height() * self.ref_arrow_ratio,
             (lane_size - text_rect.height()) / 2)
         path = QPainterPath()
         path.moveTo(x, lane_size / 2)
@@ -237,7 +323,7 @@ class LogGraphDelegate(QStyledItemDelegate):
         path.lineTo(x, lane_size / 2)
         painter.drawPath(path)
         painter.drawText(text_rect, Qt.AlignLeft | Qt.AlignVCenter, ref_text)
-        return text_rect.right() + cls.ref_spacing
+        return text_rect.right() + self.ref_spacing
 
     def paint(self, painter, option, index):
         if not self.draw_focus:
@@ -300,80 +386,119 @@ class LogGraphDelegate(QStyledItemDelegate):
             painter.restore()
 
 
-class ColorPool(object):
-    def __init__(self):
-        self.highest = -1
-        self.unused = []
+@loadable_widget
+class LogFilter(QFrame):
+    def __init__(self, parent=None):
+        super(LogFilter, self).__init__(parent=parent)
+        setup_ui(self)
+        self.filter_model = FilterModel(parent=self)
+        self._viewer = None
+        self.revs_menu = QMenu(parent=self)
+        self.revs_separator = None
+        self.rev_actions = QActionGroup(self)
+        self.rev_actions.addAction(self.action_all_refs)
+        self.select_revs_button.setMenu(self.revs_menu)
+        self.action_all_refs.revs = None
+        self.action_all_refs.triggered.connect(self.show_all_refs)
+        self.action_select_branches.triggered.connect(self.pick_branches)
+        self.filter_text.textEdited.connect(self.filter_text_edited)
 
-    def acquire(self):
-        if self.unused:
-            return -self.unused.pop()
+    @property
+    def source_model(self):
+        return self.filter_model.sourceModel()
+
+    @source_model.setter
+    def source_model(self, model):
+        self.filter_model.setSourceModel(model)
+        self.revs_menu.clear()
+        for action in self.rev_actions.actions():
+            if action is not self.action_all_refs:
+                self.rev_actions.removeAction(action)
+        self.revs_menu.addAction(self.action_all_refs)
+        if not model.repo.head_ref:
+            self.revs_menu.addAction(self.create_rev_action(model.repo, 'HEAD'))
+        for branch in model.repo.branches:
+            self.revs_menu.addAction(self.create_rev_action(model.repo, branch))
+        if model.all:
+            self._select_action(self.action_all_refs)
         else:
-            self.highest += 1
-            return self.highest
-
-    def release(self, color):
-        if color == self.highest:
-            self.highest -= 1
-            if self.unused and (self.unused[0] == -self.highest):
-                del self.unused[0]
-        else:
-            bisect.insort(self.unused, -color)
-
-
-def create_log_graph(repo, git_log):
-    graph = []
-    lanes = []
-    commit_lane_map = {}
-    color_pool = ColorPool()
-    prev_row = None
-    for log_entry in git_log:
-        # locate the lane for the current commit
-        if log_entry.commit_id in commit_lane_map:
-            commit_lane = commit_lane_map.pop(log_entry.commit_id)
-            commit_color = lanes.pop(commit_lane).color
-        else: # if not found, it goes into a new lane
-            commit_lane = len(lanes)
-            commit_color = color_pool.acquire()
-            # calculate by how much we need to shift lanes
-        # for every parent not mapped, map it to a lane and shift lanes
-        lane_shift = -1
-        for parent_id in log_entry.parent_ids:
-            if not parent_id in commit_lane_map:
-                lane_shift += 1
-                parent_lane = commit_lane + lane_shift
-                if lane_shift:
-                    parent_color = color_pool.acquire()
+            selected_revs = model.revs
+            if not selected_revs:
+                if model.repo.head_ref:
+                    selected_revs = (model.repo.head_ref,)
                 else:
-                    parent_color = commit_color
-                lanes.insert(parent_lane, LaneData(parent_id, parent_color))
-                commit_lane_map[parent_id] = parent_lane
-                # release commit color if it wasn't used
-        if lane_shift < 0:
-            color_pool.release(commit_color)
-            # update commit lane map to reflect lane shift
-        if lane_shift:
-            for lane in xrange(commit_lane + lane_shift + 1, len(lanes)):
-                commit_lane_map[lanes[lane].commit_id] = lane
-                # create the list of edges
-        edges = []
-        # add parent edges for the current commit
-        for parent_id in log_entry.parent_ids:
-            parent_lane = commit_lane_map[parent_id]
-            edges.append(GraphEdge(
-                commit_lane, parent_lane, lanes[parent_lane].color))
-            # add straight edges for lanes before the current commit
-        for lane in xrange(0, commit_lane):
-            edges.append(GraphEdge(lane, lane, lanes[lane].color))
-            # add possible angled edges for lanes after the current commit
-        for lane in xrange(commit_lane + lane_shift + 1, len(lanes)):
-            edges.append(GraphEdge(lane - lane_shift, lane, lanes[lane].color))
-            # create the row in the commit list
-        prev_row = GraphRow(
-            repo=repo,
-            log_entry=log_entry,
-            prev_row=prev_row,
-            commit_node=GraphNode(lane=commit_lane, color=commit_color),
-            edges=edges)
-        graph.append(prev_row)
-    return graph
+                    selected_revs = ('HEAD',)
+            action = self._find_rev_action(selected_revs)
+            if not action:
+                action = self.create_rev_action(model.repo, model.revs)
+                self.revs_menu.addAction(action)
+            self._select_action(action)
+        self.revs_separator = self.revs_menu.addSeparator()
+        self.revs_menu.addAction(self.action_select_branches)
+
+    @property
+    def viewer(self):
+        return self._viewer
+
+    @viewer.setter
+    def viewer(self, new_viewer):
+        self._viewer = new_viewer
+        self._viewer.setModel(self.filter_model)
+
+    def create_rev_action(self, repo, *revs):
+        action = QAction(self.revs_menu)
+        action.revs = revs
+        action.setText(', '.join(str(rev) for rev in revs))
+        action.setCheckable(True)
+        action.setActionGroup(self.rev_actions)
+        action.triggered.connect(self._revs_action_triggered)
+        return action
+
+    def show_all_refs(self):
+        self._select_action(self.action_all_refs)
+        with busy_cursor():
+            self.source_model.revs = ()
+            self.source_model.all = True
+            self.source_model.refresh()
+
+    def pick_branches(self):
+        dialog = PickBranchesDialog(repo=self.source_model.repo, parent=self)
+        if dialog.exec_() == dialog.Accepted:
+            self.show_revs(*dialog.selected_branches)
+
+    def _select_action(self, action):
+        action.setChecked(True)
+        self.select_revs_button.setText(action.text())
+
+    def _revs_action_triggered(self):
+        self._select_action(self.sender())
+        with busy_cursor():
+            self.source_model.revs = self.sender().revs
+            self.source_model.all = False
+            self.source_model.refresh()
+
+    def _find_rev_action(self, revs):
+        return next((action for action in self.rev_actions.actions()
+            if action.revs == revs), None)
+
+    def show_revs(self, *revs):
+        action = self._find_rev_action(revs)
+        if not action:
+            action = self.create_rev_action(self.source_model.repo, *revs)
+            self.revs_menu.insertAction(self.revs_separator, action)
+        self._select_action(action)
+        with busy_cursor():
+            self.source_model.revs = revs
+            self.source_model.all = False
+            self.source_model.refresh()
+
+    def filter_text_edited(self, text):
+        if text:
+            self.viewer.hideColumn(0)
+            self.filter_model.filters += self.filter_graph_row
+        else:
+            self.filter_model.filters -= self.filter_graph_row
+            self.viewer.showColumn(0)
+
+    def filter_graph_row(self, graph_row):
+        return commit_matches_text(graph_row.log_entry, self.filter_text.text())

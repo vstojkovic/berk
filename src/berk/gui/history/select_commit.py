@@ -1,6 +1,5 @@
-from berk.gui import busy_cursor, FilterModel, model_item, setup_ui
-from berk.gui.history import commit_matches_text, create_log_graph, \
-    LogGraphDelegate, LogGraphModel
+from berk.gui import busy_cursor, model_item, setup_ui
+from berk.gui.history import LogGraphDelegate, LogGraphModel
 
 from PySide.QtGui import QDialog, QDialogButtonBox
 
@@ -16,16 +15,11 @@ class SelectCommitDialog(QDialog):
             self.move(parent.geometry().center() - self.rect().center())
         with busy_cursor():
             self.graph_model = LogGraphModel(self.repo,
-                lambda: create_log_graph(self.repo,
-                    self.repo.log(paths=[f.path for f in self.files],
-                    revs=self.revs, all=self.all)))
-        self.filter_model = FilterModel()
-        self.filter_model.setSourceModel(self.graph_model)
-        self.default_delegate = self.graph_table.itemDelegate()
-        self.graph_delegate = LogGraphDelegate()
-        self.graph_table.setModel(self.filter_model)
-        self.graph_table.setItemDelegate(self.graph_delegate)
-        self.filter_text.textEdited.connect(self.filter_text_edited)
+                paths=[f.path for f in self.files], revs=self.revs,
+                all=self.all, parent=self)
+        self.graph_table.setItemDelegate(LogGraphDelegate())
+        self.log_filter.source_model = self.graph_model
+        self.log_filter.viewer = self.graph_table
         self.dialog_buttons.button(QDialogButtonBox.Ok).setEnabled(False)
         # We must assign the selection model to a variable, to avoid triggering
         # a segfault bug (temporary PyObject* destroyed prematurely)
@@ -37,17 +31,6 @@ class SelectCommitDialog(QDialog):
     def selected_commit(self):
         selected_row = model_item(self.graph_table.currentIndex())
         return selected_row.log_entry if selected_row else None
-
-    def filter_text_edited(self, text):
-        if text:
-            self.graph_table.hideColumn(0)
-            self.filter_model.filters += self.filter_graph_row
-        else:
-            self.filter_model.filters -= self.filter_graph_row
-            self.graph_table.showColumn(0)
-
-    def filter_graph_row(self, graph_row):
-        return commit_matches_text(graph_row.log_entry, self.filter_text.text())
 
     def commit_clicked(self, index, old_index):
         self.dialog_buttons.button(QDialogButtonBox.Ok).setEnabled(bool(

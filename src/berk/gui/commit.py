@@ -11,111 +11,6 @@ from berk.gui.workspace import apply_status_to_icon, deep_file_list, \
 from berk.gui.workspace.file_view import FileModel
 from berk.gui.history.select_commit import SelectCommitDialog
 
-class StagedChangesModel(QAbstractTableModel):
-    column_getters = [
-        lambda item: posixpath.basename(item.path),
-        lambda item: item.path,
-        lambda item: item.lines_added,
-        lambda item: item.lines_deleted,
-        lambda item: item.new_path
-    ]
-
-    def __init__(self, repo, root_dir, parent=None):
-        super(StagedChangesModel, self).__init__(parent=parent)
-        connect_destructor(self)
-        self.repo = repo
-        self.root_dir = root_dir
-        self.column_names = [self.tr('Name'), self.tr('Path'), self.tr('Added'),
-            self.tr('Deleted'), self.tr('New Path')]
-        self.icon_provider = FileIconProvider()
-        self.repo.workspace.before_repo_refreshed += self.before_repo_refreshed
-        self.repo.workspace.repo_refreshed += self.repo_refreshed
-        self.refresh()
-
-    def _destroyed(self):
-        self.repo.workspace.before_repo_refreshed -= self.before_repo_refreshed
-        self.repo.workspace.repo_refreshed -= self.repo_refreshed
-
-    def refresh(self):
-        self.beginResetModel()
-        self._refresh_changes()
-        self.endResetModel()
-
-    def _refresh_changes(self):
-        if self.root_dir and not isinstance(self.root_dir, Repo):
-            diff_items = (self.root_dir,)
-        else:
-            diff_items = ()
-        self.changeset = tuple(self.repo.diff_summary(staged=True,
-            renames=True, paths=diff_items))
-
-    def before_repo_refreshed(self, repo):
-        if self.repo is repo:
-            self.beginResetModel()
-
-    def repo_refreshed(self, repo):
-        if self.repo is repo:
-            self._refresh_changes()
-            self.endResetModel()
-
-    def rowCount(self, parent):
-        return len(self.changeset)
-
-    def columnCount(self, parent):
-        return len(self.column_names)
-
-    def data(self, index, role):
-        if not index.isValid():
-            return None
-        item = self.changeset[index.row()]
-        if role == Qt.DisplayRole:
-            return self.column_getters[index.column()](item)
-        if role == Qt.DecorationRole:
-            if index.column() > 0:
-                return None
-            workspace_item = self.repo.resolve(
-                item.new_path or item.path)
-            return apply_status_to_icon(
-                self.icon_provider[workspace_item.os_path],
-                workspace_item.index_status, workspace_item.work_tree_status)
-
-    def headerData(self, section, orientation, role):
-        if role != Qt.DisplayRole:
-            return None
-        if orientation == Qt.Vertical:
-            return str(section)
-        return self.column_names[section]
-
-
-class LocalChangesModel(FileModel):
-    def _refresh_files(self):
-        super(LocalChangesModel, self)._refresh_files()
-        self.included_files = set(self.files) if self.files else ()
-
-    def flags(self, index):
-        result = super(LocalChangesModel, self).flags(index)
-        if index.column() == 0:
-            result |= Qt.ItemIsUserCheckable
-        return result
-
-    def data(self, index, role):
-        if role == Qt.CheckStateRole:
-            if index.column() > 0:
-                return None
-            item = model_item(index)
-            return Qt.Checked if item in self.included_files else Qt.Unchecked
-        return super(LocalChangesModel, self).data(index, role)
-
-    def setData(self, index, value, role):
-        if role != Qt.CheckStateRole or index.column() > 0: return False
-        item = model_item(index)
-        if item in self.included_files:
-            self.included_files.remove(item)
-        else:
-            self.included_files.add(item)
-        self.dataChanged.emit(index, index)
-        return True
-
 
 class CommitDialog(QDialog):
     def __init__(self, repo, selected_items, parent=None):
@@ -224,3 +119,109 @@ class CommitDialog(QDialog):
     def amend_toggled(self, should_amend):
         if should_amend and not self.message:
             self.reuse_last_message()
+
+
+class StagedChangesModel(QAbstractTableModel):
+    column_getters = [
+        lambda item: posixpath.basename(item.path),
+        lambda item: item.path,
+        lambda item: item.lines_added,
+        lambda item: item.lines_deleted,
+        lambda item: item.new_path
+    ]
+
+    def __init__(self, repo, root_dir, parent=None):
+        super(StagedChangesModel, self).__init__(parent=parent)
+        connect_destructor(self)
+        self.repo = repo
+        self.root_dir = root_dir
+        self.column_names = [self.tr('Name'), self.tr('Path'), self.tr('Added'),
+            self.tr('Deleted'), self.tr('New Path')]
+        self.icon_provider = FileIconProvider()
+        self.repo.workspace.before_repo_refreshed += self.before_repo_refreshed
+        self.repo.workspace.repo_refreshed += self.repo_refreshed
+        self.refresh()
+
+    def _destroyed(self):
+        self.repo.workspace.before_repo_refreshed -= self.before_repo_refreshed
+        self.repo.workspace.repo_refreshed -= self.repo_refreshed
+
+    def refresh(self):
+        self.beginResetModel()
+        self._refresh_changes()
+        self.endResetModel()
+
+    def _refresh_changes(self):
+        if self.root_dir and not isinstance(self.root_dir, Repo):
+            diff_items = (self.root_dir,)
+        else:
+            diff_items = ()
+        self.changeset = tuple(self.repo.diff_summary(staged=True,
+            renames=True, paths=diff_items))
+
+    def before_repo_refreshed(self, repo):
+        if self.repo is repo:
+            self.beginResetModel()
+
+    def repo_refreshed(self, repo):
+        if self.repo is repo:
+            self._refresh_changes()
+            self.endResetModel()
+
+    def rowCount(self, parent):
+        return len(self.changeset)
+
+    def columnCount(self, parent):
+        return len(self.column_names)
+
+    def data(self, index, role):
+        if not index.isValid():
+            return None
+        item = self.changeset[index.row()]
+        if role == Qt.DisplayRole:
+            return self.column_getters[index.column()](item)
+        if role == Qt.DecorationRole:
+            if index.column() > 0:
+                return None
+            workspace_item = self.repo.resolve(
+                item.new_path or item.path)
+            return apply_status_to_icon(
+                self.icon_provider[workspace_item.os_path],
+                workspace_item.index_status, workspace_item.work_tree_status)
+
+    def headerData(self, section, orientation, role):
+        if role != Qt.DisplayRole:
+            return None
+        if orientation == Qt.Vertical:
+            return str(section)
+        return self.column_names[section]
+
+
+class LocalChangesModel(FileModel):
+    def _refresh_files(self):
+        super(LocalChangesModel, self)._refresh_files()
+        self.included_files = set(self.files) if self.files else ()
+
+    def flags(self, index):
+        result = super(LocalChangesModel, self).flags(index)
+        if index.column() == 0:
+            result |= Qt.ItemIsUserCheckable
+        return result
+
+    def data(self, index, role):
+        if role == Qt.CheckStateRole:
+            if index.column() > 0:
+                return None
+            item = model_item(index)
+            return Qt.Checked if item in self.included_files else Qt.Unchecked
+        return super(LocalChangesModel, self).data(index, role)
+
+    def setData(self, index, value, role):
+        if role != Qt.CheckStateRole or index.column() > 0: return False
+        item = model_item(index)
+        if item in self.included_files:
+            self.included_files.remove(item)
+        else:
+            self.included_files.add(item)
+        self.dataChanged.emit(index, index)
+        return True
