@@ -74,7 +74,7 @@ class FileModel(QAbstractTableModel):
     def item_updated(self, item):
         if not self.item_is_mine(item): return
         self.dataChanged.emit(self.item_index(item),
-            self.item_index(item, len(self.column_names)))
+            self.item_index(item, len(self.column_names) - 1))
 
     def before_repo_refreshed(self, repo):
         if self.files and any(file.repo is repo for file in self.files):
